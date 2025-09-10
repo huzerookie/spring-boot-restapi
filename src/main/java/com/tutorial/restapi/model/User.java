@@ -2,17 +2,33 @@ package com.tutorial.restapi.model;
 
 import java.time.LocalDate;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Size;
 
 @Entity
+@Table(name="user_details")
 public class User {
 	
 	@Id
+	@GeneratedValue(strategy = GenerationType.SEQUENCE)
 	private int id;
 	
+	@Size(min=2, message="Name should have at least 2 characters")
+	@Column(name="name", nullable=false)
 	private String name;
+
+	@Size(min=2, message="Country should have at least 2 characters")
+	@Column(name="country", nullable=false)
 	private String country;
+	
+	@Past(message="Date of Birth should be in the past")
+	@Column(name="date_of_birth", nullable=false)
 	private LocalDate dateOfBirth;
 	
 	public User() {
