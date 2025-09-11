@@ -15,20 +15,27 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.tutorial.restapi.exception.UserNotFoundException;
+import com.tutorial.restapi.model.Post;
 import com.tutorial.restapi.model.User;
+import com.tutorial.restapi.service.PostService;
 import com.tutorial.restapi.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 
-@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/users")
 @Tag(name = "User API", description = "CRUD operations for users")
 public class UserController {
 	UserService userService;
+	PostService postService;
+
+	public UserController(UserService userService, PostService postService) {
+		super();
+		this.userService = userService;
+		this.postService = postService;
+	}
 	
 	@Operation(summary = "Get all users")
 	@GetMapping
@@ -69,5 +76,45 @@ public class UserController {
 		User updatedUser = userService.updateUser(id, user);
 		return ResponseEntity.ok(updatedUser);
 	}
-
+	
+	@Operation(summary = "Get all posts for a specific user by User ID")
+	@GetMapping("/{id}/posts")
+	public ResponseEntity<List<Post>> getPostsByUserId(@PathVariable int id) {
+		User user = userService.getUser(id);
+		if (user == null) {
+			throw new UserNotFoundException("User not found with id: " + id);
+		}
+		return ResponseEntity.ok(user.getPosts());
+	}
+	
+	@Operation(summary = "Get post by post ID for a specific user")
+	@GetMapping("/{userId}/posts/{postId}")
+	public ResponseEntity<Post> getPostByUserIdAndPostId(@PathVariable int userId, @PathVariable int postId) {
+		User user = userService.getUser(userId);
+		if (user == null) {
+			throw new UserNotFoundException("User not found with id: " + userId);
+		}
+		Post post = user.getPosts().stream().filter(p -> p.getId() == postId).findFirst().orElse(null);
+		if (post == null) {
+			return ResponseEntity.notFound().build();
+		}
+		return ResponseEntity.ok(post);
+	}
+	
+	@Operation(summary = "Create a new post for a specific user by User ID")
+	@PostMapping("/{id}/posts")
+	public ResponseEntity<Post> createPostForUser(@PathVariable int id, @Valid @RequestBody Post post) {
+		User user = userService.getUser(id);
+		if (user == null) {
+			throw new UserNotFoundException("User not found with id: " + id);
+		}
+		post.setUser(user);
+		user.getPosts().add(post);
+		userService.createUser(user); // Save the user to persist the new post
+		postService.createPost(post); // Save the post
+		URI location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{postId}").buildAndExpand(post.getId())
+				.toUri();
+		return ResponseEntity.created(location).body(post);
+	}
+	
 }
